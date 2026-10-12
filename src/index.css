@@ -1,0 +1,124 @@
+:root {
+  font-family: "DM Sans", sans-serif;
+  color: var(--ink);
+  background: var(--paper);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-weight: 400;
+  color-scheme: light;
+
+  --ink: #14201d;
+  --muted: #65716b;
+  --paper: #f4f6f2;
+  --surface: #ffffff;
+  --surface-soft: #edf2ee;
+  --line: #dbe1dc;
+  --coral: #e85d3f;
+  --lime: #d9ef71;
+  --forest: #18332d;
+  --forest-text: #ffffff;
+  --forest-copy: #d6e0da;
+  --forest-muted: #bdcbc4;
+  --forest-line: #72877c;
+  --tag-text: #18332d;
+  --primary-text: #ffffff;
+  --header-glass: rgb(244 246 242 / 94%);
+  --display-font: "Space Grotesk", "DM Sans", sans-serif;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --ink: #edf3ee;
+  --muted: #a8b5ad;
+  --paper: #111916;
+  --surface: #19231f;
+  --surface-soft: #26352e;
+  --line: #35453d;
+  --coral: #ff8a70;
+  --lime: #c9e866;
+  --forest: #0b1411;
+  --forest-text: #edf3ee;
+  --forest-copy: #c5d1c9;
+  --forest-muted: #a3b5aa;
+  --forest-line: #536b5e;
+  --tag-text: #dce9df;
+  --primary-text: #edf3ee;
+  --header-glass: rgb(17 25 22 / 94%);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  min-width: 320px;
+  scroll-behavior: smooth;
+  scroll-padding-top: 88px;
+}
+
+body {
+  min-width: 320px;
+  min-height: 100vh;
+  margin: 0;
+  color: var(--ink);
+  background: var(--paper);
+  transition:
+    color 220ms ease,
+    background-color 220ms ease;
+}
+
+body * {
+  transition:
+    color 220ms ease,
+    background-color 220ms ease,
+    border-color 220ms ease;
+}
+
+body,
+button,
+input {
+  font-family: "DM Sans", sans-serif;
+}
+
+button,
+input {
+  font-size: inherit;
+}
+
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+a {
+  color: inherit;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible {
+  outline: 3px solid var(--coral);
+  outline-offset: 4px;
+}
+
+::selection {
+  color: var(--ink);
+  background: var(--lime);
+}
+
+#root {
+  min-height: 100vh;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  clip-path: inset(50%);
+}

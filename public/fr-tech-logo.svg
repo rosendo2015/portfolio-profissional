@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 420" role="img" aria-labelledby="title description">
+  <title id="title">FR, Francisco Rosendo</title>
+  <desc id="description">Monograma FR conectado por trilhas de circuito, representando desenvolvimento e tecnologia em evolução.</desc>
+  <rect width="360" height="420" rx="6" fill="#18332d" />
+  <path d="M24 24h70M24 24v70M336 24h-70M336 24v70M24 396h70M24 396v-70M336 396h-70M336 396v-70" fill="none" stroke="#29473f" stroke-width="2" />
+  <text x="38" y="58" fill="#bdcbc4" font-family="Arial, sans-serif" font-size="11" font-weight="700" letter-spacing="2">FR / DIGITAL SYSTEMS</text>
+  <path d="M150 86h31l21-21h52" fill="none" stroke="#e85d3f" stroke-width="3" stroke-linecap="square" />
+  <path d="m244 56 10 9-10 9" fill="none" stroke="#e85d3f" stroke-width="3" stroke-linecap="square" stroke-linejoin="miter" />
+  <rect x="68" y="106" width="224" height="220" rx="12" fill="#1d3b33" stroke="#426257" stroke-width="2" />
+  <path d="M68 142H48M68 178H48M68 214H48M68 250H48M292 142h20M292 178h20M292 214h20M292 250h20" fill="none" stroke="#85a397" stroke-width="3" />
+  <path d="M41 138h7v7h-7zM41 174h7v7h-7zM41 210h7v7h-7zM41 246h7v7h-7zM312 138h7v7h-7zM312 174h7v7h-7zM312 210h7v7h-7zM312 246h7v7h-7z" fill="#d9ef71" />
+  <path d="M121 260v-91h68M121 213h56" fill="none" stroke="#d9ef71" stroke-width="13" stroke-linecap="square" />
+  <path d="M207 260v-91h26c18 0 27 9 27 24s-9 24-27 24h-26m25 0 30 43" fill="none" stroke="#f2f6f2" stroke-width="13" stroke-linecap="square" stroke-linejoin="miter" />
+  <path d="M126 294h107" fill="none" stroke="#426257" stroke-width="2" />
+  <circle cx="244" cy="294" r="4" fill="#e85d3f" />
+  <text x="180" y="360" fill="#f2f6f2" font-family="Arial, sans-serif" font-size="11" font-weight="700" letter-spacing="2" text-anchor="middle">BUILD  /  CONNECT  /  EVOLVE</text>
+  <text x="180" y="382" fill="#85a397" font-family="Arial, sans-serif" font-size="9" font-weight="700" letter-spacing="3" text-anchor="middle">FULLSTACK DEVELOPMENT</text>
+</svg>
