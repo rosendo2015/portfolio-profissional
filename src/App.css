@@ -1,3 +1,10 @@
+fieldset {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+
 .container {
   width: min(1180px, calc(100% - 80px));
   margin-inline: auto;
@@ -1110,4 +1117,83 @@
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+.contact-note {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.about-contact-note {
+  margin: 24px 0 0;
+  color: var(--forest-copy);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.contact-description {
+  max-width: 520px;
+  margin: 0 0 24px;
+  color: var(--muted);
+  font-size: 16px;
+  line-height: 1.6;
+}
+
+.contact-form {
+  width: 100%;
+  max-width: 500px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.form-row {
+  display: flex;
+  gap: 16px;
+}
+
+.form-group {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.form-group label {
+  display: none;
+}
+
+.form-group input,
+.form-group textarea {
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  color: var(--ink);
+  background: var(--surface);
+  font-size: 14px;
+  transition: border-color 160ms ease;
+}
+
+.form-group input:focus,
+.form-group textarea:focus {
+  outline: none;
+  border-color: var(--coral);
+}
+
+.form-group input::placeholder,
+.form-group textarea::placeholder {
+  color: var(--muted);
+}
+
+.form-group textarea {
+  resize: vertical;
+  min-height: 80px;
+  font-family: inherit;
+}
+
+.contact-form .button {
+  align-self: flex-start;
+  margin-top: 4px;
 }

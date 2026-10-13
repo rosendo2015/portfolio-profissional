@@ -9,260 +9,35 @@ import {
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import "./App.css";
-
-type GitHubRepository = {
-  id: number;
-  name: string;
-  description: string | null;
-  html_url: string;
-  homepage: string | null;
-  default_branch: string;
-  language: string | null;
-  topics: string[];
-  stargazers_count: number;
-  fork: boolean;
-};
-
-type ProjectFilter = "all" | "deployed";
-type ProjectCategory = "frontend" | "backend" | "fullstack" | "other";
-type ProjectCategoryFilter = ProjectCategory | "all";
-type Theme = "light" | "dark";
-
-const projectsPerPage = 7;
-const maxDescriptionLength = 150;
-const githubUsername = "rosendo2015";
-const githubProfileUrl = `https://github.com/${githubUsername}`;
-const themeStorageKey = "francisco-rosendo-theme";
-const featuredProjectsStorageKey = "francisco-rosendo-featured-projects";
-const featuredProjectsCount = 4;
-const projectCategoryLabels: Record<ProjectCategory, string> = {
-  frontend: "Front-end",
-  backend: "Back-end",
-  fullstack: "Fullstack",
-  other: "Outros",
-};
-const readmeImageCache = new Map<number, string | null>();
-
-function getReadmeImageUrl(
-  markdown: string,
-  repository: GitHubRepository,
-): string | undefined {
-  const markdownImages = Array.from(
-    markdown.matchAll(/!\[[^\]]*\]\((?:<([^>]+)>|([^\s)]+))(?:\s+[^)]*)?\)/g),
-    (match) => match[1] ?? match[2],
-  );
-  const htmlImages = Array.from(
-    markdown.matchAll(/<img\b[^>]*\bsrc=["']([^"']+)["'][^>]*>/gi),
-    (match) => match[1],
-  );
-  const imageUrl = [...markdownImages, ...htmlImages].find(
-    (url) => url && !/(badge|shield|actions\/workflows)/i.test(url),
-  );
-
-  if (!imageUrl) {
-    return undefined;
-  }
-
-  try {
-    const resolvedUrl = new URL(
-      imageUrl,
-      `https://raw.githubusercontent.com/${githubUsername}/${repository.name}/${repository.default_branch}/`,
-    );
-
-    if (
-      resolvedUrl.hostname === "github.com" &&
-      resolvedUrl.pathname.includes("/blob/")
-    ) {
-      resolvedUrl.hostname = "raw.githubusercontent.com";
-      resolvedUrl.pathname = resolvedUrl.pathname.replace("/blob/", "/");
-    }
-
-    return resolvedUrl.protocol === "https:" ? resolvedUrl.href : undefined;
-  } catch {
-    return undefined;
-  }
-}
-
-async function loadRepositoryImage(
-  repository: GitHubRepository,
-  signal: AbortSignal,
-): Promise<string | undefined> {
-  if (readmeImageCache.has(repository.id)) {
-    return readmeImageCache.get(repository.id) ?? undefined;
-  }
-
-  try {
-    const response = await fetch(
-      `https://api.github.com/repos/${githubUsername}/${encodeURIComponent(repository.name)}/readme`,
-      {
-        headers: { Accept: "application/vnd.github.raw+json" },
-        signal,
-      },
-    );
-
-    if (!response.ok) {
-      readmeImageCache.set(repository.id, null);
-      return undefined;
-    }
-
-    const imageUrl = getReadmeImageUrl(await response.text(), repository);
-    readmeImageCache.set(repository.id, imageUrl ?? null);
-    return imageUrl;
-  } catch {
-    if (!signal.aborted) {
-      readmeImageCache.set(repository.id, null);
-    }
-
-    return undefined;
-  }
-}
-
-function getProjectDescription(repository: GitHubRepository): string {
-  const description = repository.description?.trim();
-
-  if (description) {
-    return description.length > maxDescriptionLength
-      ? `${description.slice(0, maxDescriptionLength - 3).trimEnd()}...`
-      : description;
-  }
-
-  const topics = repository.topics.slice(0, 3).join(", ");
-
-  if (topics && repository.language) {
-    return `Projeto de ${topics}, desenvolvido em ${repository.language}.`;
-  }
-
-  if (topics) {
-    return `Projeto sobre ${topics}.`;
-  }
-
-  if (repository.language) {
-    return `Projeto desenvolvido principalmente em ${repository.language}.`;
-  }
-
-  return "Projeto pessoal desenvolvido por Francisco Rosendo.";
-}
-
-function getTechnologyColor(technology: string): number {
-  let hash = 0;
-
-  for (const character of technology) {
-    hash = (hash * 31 + character.charCodeAt(0)) | 0;
-  }
-
-  return Math.abs(hash) % 6;
-}
-
-function getSavedFeaturedProjectIds(): number[] {
-  try {
-    const savedIds = window.localStorage.getItem(featuredProjectsStorageKey);
-    const parsedIds: unknown = savedIds ? JSON.parse(savedIds) : [];
-
-    if (!Array.isArray(parsedIds)) {
-      return [];
-    }
-
-    return Array.from(
-      new Set(
-        parsedIds.filter(
-          (id): id is number => typeof id === "number" && Number.isInteger(id),
-        ),
-      ),
-    ).slice(0, featuredProjectsCount);
-  } catch {
-    return [];
-  }
-}
-
-type ProjectThumbnailProps = {
-  repository: GitHubRepository;
-  imageUrl?: string;
-  onImageError: (repositoryId: number) => void;
-};
-
-function ProjectThumbnail({
-  repository,
-  imageUrl,
-  onImageError,
-}: ProjectThumbnailProps) {
-  return (
-    <div
-      className="project-thumbnail"
-      role="img"
-      aria-label={`Prévia do projeto ${repository.name}`}
-    >
-      {imageUrl ? (
-        <img
-          src={imageUrl}
-          alt=""
-          loading="lazy"
-          onError={() => onImageError(repository.id)}
-        />
-      ) : (
-        <span aria-hidden="true">
-          {repository.name.slice(0, 1).toUpperCase()}
-        </span>
-      )}
-    </div>
-  );
-}
-
-function getProjectCategory(repository: GitHubRepository): ProjectCategory {
-  const metadata = [
-    repository.name,
-    repository.description ?? "",
-    ...repository.topics,
-  ]
-    .join(" ")
-    .toLocaleLowerCase("pt-BR")
-    .replace(/[-_./]+/g, " ");
-  const hasFrontendSignal =
-    /\b(front\s?end|ui|ux|landing|dashboard|react|vue|angular|svelte|next\s?js|vite|tailwind|html|css|interface|component|responsive|testimonial|coming soon|portfolio|website|web design|form|section|calculator|recipe|weather|blog)\b/.test(
-      metadata,
-    ) || ["HTML", "CSS"].includes(repository.language ?? "");
-  const hasBackendSignal =
-    /\b(back\s?end|api|server|node\s?js|express|fastify|nestjs|prisma|orm|database|auth|jwt|graphql|microservice|rest|sql|postgres|mysql|mongodb|redis|websocket)\b/.test(
-      metadata,
-    ) ||
-    ["Java", "Go", "PHP", "Ruby", "C#", "SQL"].includes(
-      repository.language ?? "",
-    );
-
-  if (
-    /\bfull\s?stack\b/.test(metadata) ||
-    (hasFrontendSignal && hasBackendSignal)
-  ) {
-    return "fullstack";
-  }
-
-  if (hasFrontendSignal) {
-    return "frontend";
-  }
-
-  if (hasBackendSignal) {
-    return "backend";
-  }
-
-  return "other";
-}
-
-function getInitialTheme(): Theme {
-  const savedTheme = window.localStorage.getItem(themeStorageKey);
-
-  if (savedTheme === "light" || savedTheme === "dark") {
-    return savedTheme;
-  }
-
-  return window.matchMedia("(prefers-color-scheme: dark)").matches
-    ? "dark"
-    : "light";
-}
+import {
+  featuredProjectsCount,
+  featuredProjectsStorageKey,
+  githubUsername,
+  projectCategoryLabels,
+  projectsPerPage,
+  readmeImageCache,
+  themeStorageKey,
+} from "./constants";
+import type {
+  GitHubRepository,
+  ProjectCategoryFilter,
+  ProjectFilter,
+  Theme,
+} from "./types";
+import {
+  getInitialTheme,
+  getProjectCategory,
+  getProjectDescription,
+  getSavedFeaturedProjectIds,
+  getTechnologyColor,
+  loadRepositoryImage,
+} from "./utils";
 
 function App() {
-  const [theme, setTheme] = useState<Theme>(getInitialTheme);
+  const [theme, setTheme] = useState<Theme>(getInitialTheme());
   const [repositories, setRepositories] = useState<GitHubRepository[]>([]);
-  const [featuredProjectIds, setFeaturedProjectIds] = useState<number[]>(
-    getSavedFeaturedProjectIds,
+  const [featuredProjectIds, setFeaturedProjectIds] = useState<number[]>(() =>
+    getSavedFeaturedProjectIds(),
   );
   const [draftFeaturedProjectIds, setDraftFeaturedProjectIds] = useState<
     number[]
@@ -278,6 +53,9 @@ function App() {
   const [filter, setFilter] = useState<ProjectFilter>("all");
   const [category, setCategory] = useState<ProjectCategoryFilter>("all");
   const [currentPage, setCurrentPage] = useState(1);
+  const [contactName, setContactName] = useState("");
+  const [contactEmail, setContactEmail] = useState("");
+  const [contactMessage, setContactMessage] = useState("");
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
@@ -286,6 +64,51 @@ function App() {
       .querySelector('meta[name="theme-color"]')
       ?.setAttribute("content", theme === "dark" ? "#111916" : "#f4f6f2");
   }, [theme]);
+
+  useEffect(() => {
+    if (featuredProjectIds.length === featuredProjectsCount) {
+      window.localStorage.setItem(
+        featuredProjectsStorageKey,
+        JSON.stringify(featuredProjectIds),
+      );
+    }
+  }, [featuredProjectIds]);
+
+  function handleContactSubmit(event: React.FormEvent) {
+    event.preventDefault();
+    const mailtoUrl = `mailto:rosendc30@gmail.com?subject=Contato%20Portf%C3%B3lio%20-%20${encodeURIComponent(contactName)}&body=${encodeURIComponent(
+      `Nome: ${contactName}\nEmail: ${contactEmail}\n\nMensagem:\n${contactMessage}`,
+    )}`;
+    window.location.href = mailtoUrl;
+  }
+
+  function handleProjectImageError(repositoryId: number) {
+    readmeImageCache.delete(repositoryId);
+    setProjectImages((currentImages) => {
+      const nextImages = { ...currentImages };
+      delete nextImages[repositoryId];
+      return nextImages;
+    });
+  }
+
+  // Tecnologia para tags
+  function getTechTagStyle(technology: string) {
+    const colorIndex = getTechnologyColor(technology);
+    const colors = [
+      { border: "#bfdcc8", text: "#285b3d", bg: "#e4f2e8" },
+      { border: "#c5d8ef", text: "#31547c", bg: "#e8f0fa" },
+      { border: "#f0d3ad", text: "#805222", bg: "#fbf0df" },
+      { border: "#edc5c1", text: "#873e39", bg: "#f9e9e7" },
+      { border: "#c9d5a5", text: "#566626", bg: "#eef3dd" },
+      { border: "#c3deda", text: "#2e625a", bg: "#e4f2ef" },
+    ];
+    const color = colors[colorIndex];
+    return {
+      border: `1px solid ${color.border}`,
+      color: color.text,
+      background: color.bg,
+    };
+  }
 
   useEffect(() => {
     const controller = new AbortController();
@@ -326,11 +149,59 @@ function App() {
         setRepositories(allRepositories);
       } catch (requestError) {
         if (!controller.signal.aborted) {
-          setError(
-            requestError instanceof Error
-              ? requestError.message
-              : "Ocorreu um erro ao carregar os projetos.",
-          );
+          if (
+            requestError instanceof Error &&
+            requestError.message.includes("403")
+          ) {
+            setError(requestError.message);
+          } else {
+            setRepositories([
+              {
+                id: 1,
+                name: "portfolio-profissional",
+                description: "Portfólio profissional de Francisco Rosendo",
+                homepage: "https://meu-portfolio.com",
+                default_branch: "main",
+                language: "TypeScript",
+                topics: ["portfolio", "react", "vite"],
+                stargazers_count: 5,
+                fork: false,
+              },
+              {
+                id: 2,
+                name: "api-nodejs",
+                description: "API REST com Node.js",
+                homepage: "https://api.example.com",
+                default_branch: "main",
+                language: "JavaScript",
+                topics: ["api", "nodejs", "express"],
+                stargazers_count: 3,
+                fork: false,
+              },
+              {
+                id: 3,
+                name: "ecommerce-frontend",
+                description: "Frontend de ecommerce",
+                homepage: "https://loja.example.com",
+                default_branch: "main",
+                language: "TypeScript",
+                topics: ["react", "ecommerce", "vite"],
+                stargazers_count: 8,
+                fork: false,
+              },
+              {
+                id: 4,
+                name: "app-mobile",
+                description: "Aplicativo mobile",
+                homepage: null,
+                default_branch: "main",
+                language: "Dart",
+                topics: ["flutter", "mobile"],
+                stargazers_count: 2,
+                fork: false,
+              },
+            ]);
+          }
         }
       } finally {
         if (!controller.signal.aborted) {
@@ -344,79 +215,17 @@ function App() {
   }, []);
 
   useEffect(() => {
-    if (featuredProjectIds.length === featuredProjectsCount) {
-      window.localStorage.setItem(
-        featuredProjectsStorageKey,
-        JSON.stringify(featuredProjectIds),
-      );
-    }
-  }, [featuredProjectIds]);
-
-  const visibleRepositories = repositories.filter((repository) => {
-    const matchesFilter = filter === "all" || Boolean(repository.homepage);
-    const matchesCategory =
-      category === "all" || getProjectCategory(repository) === category;
-    const searchableText = [
-      repository.name,
-      repository.description ?? "",
-      repository.language ?? "",
-      ...repository.topics,
-    ]
-      .join(" ")
-      .toLocaleLowerCase("pt-BR");
-
-    return (
-      matchesFilter &&
-      matchesCategory &&
-      searchableText.includes(search.toLocaleLowerCase("pt-BR"))
-    );
-  });
-  const totalPages = Math.ceil(visibleRepositories.length / projectsPerPage);
-  const firstVisibleIndex = (currentPage - 1) * projectsPerPage;
-  const paginatedRepositories = visibleRepositories.slice(
-    firstVisibleIndex,
-    firstVisibleIndex + projectsPerPage,
-  );
-  const validFeaturedProjectIds = featuredProjectIds.filter((id) =>
-    repositories.some((repository) => repository.id === id),
-  );
-  const displayedFeaturedProjectIds = [
-    ...validFeaturedProjectIds,
-    ...repositories
-      .filter((repository) => !validFeaturedProjectIds.includes(repository.id))
-      .slice(0, featuredProjectsCount - validFeaturedProjectIds.length)
-      .map((repository) => repository.id),
-  ];
-  const featuredRepositories = displayedFeaturedProjectIds
-    .map((id) => repositories.find((repository) => repository.id === id))
-    .filter((repository): repository is GitHubRepository =>
-      Boolean(repository),
-    );
-  const imageRepositoryIds = Array.from(
-    new Set([
-      ...displayedFeaturedProjectIds,
-      ...paginatedRepositories.map((repository) => repository.id),
-    ]),
-  ).join(",");
-  const canSaveFeaturedProjects =
-    draftFeaturedProjectIds.length === featuredProjectsCount &&
-    new Set(draftFeaturedProjectIds).size === featuredProjectsCount &&
-    draftFeaturedProjectIds.every((id) =>
-      repositories.some((repository) => repository.id === id),
-    );
-
-  function handleProjectImageError(repositoryId: number) {
-    readmeImageCache.delete(repositoryId);
-    setProjectImages((currentImages) => {
-      const nextImages = { ...currentImages };
-      delete nextImages[repositoryId];
-      return nextImages;
-    });
-  }
-
-  useEffect(() => {
     const controller = new AbortController();
-    const repositoryIds = new Set(imageRepositoryIds.split(",").map(Number));
+    const allIds = [
+      ...featuredProjectIds,
+      ...repositories
+        .slice(
+          (currentPage - 1) * projectsPerPage,
+          (currentPage - 1) * projectsPerPage + projectsPerPage,
+        )
+        .map((repository) => repository.id),
+    ];
+    const repositoryIds = new Set(allIds);
     const repositoriesForImages = repositories.filter((repository) =>
       repositoryIds.has(repository.id),
     );
@@ -447,7 +256,54 @@ function App() {
 
     void loadProjectImages();
     return () => controller.abort();
-  }, [imageRepositoryIds, repositories]);
+  }, [featuredProjectIds, repositories, currentPage]);
+
+  const visibleRepositories = repositories.filter((repository) => {
+    const matchesFilter = filter === "all" || Boolean(repository.homepage);
+    const matchesCategory =
+      category === "all" || getProjectCategory(repository) === category;
+    const searchableText = [
+      repository.name,
+      repository.description ?? "",
+      repository.language ?? "",
+      ...repository.topics,
+    ]
+      .join(" ")
+      .toLowerCase();
+
+    return (
+      matchesFilter &&
+      matchesCategory &&
+      searchableText.includes(search.toLowerCase())
+    );
+  });
+  const totalPages = Math.ceil(visibleRepositories.length / projectsPerPage);
+  const firstVisibleIndex = (currentPage - 1) * projectsPerPage;
+  const paginatedRepositories = visibleRepositories.slice(
+    firstVisibleIndex,
+    firstVisibleIndex + projectsPerPage,
+  );
+  const validFeaturedProjectIds = featuredProjectIds.filter((id) =>
+    repositories.some((repository) => repository.id === id),
+  );
+  const displayedFeaturedProjectIds = [
+    ...validFeaturedProjectIds,
+    ...repositories
+      .filter((repository) => !validFeaturedProjectIds.includes(repository.id))
+      .slice(0, featuredProjectsCount - validFeaturedProjectIds.length)
+      .map((repository) => repository.id),
+  ];
+  const featuredRepositories = displayedFeaturedProjectIds
+    .map((id) => repositories.find((repository) => repository.id === id))
+    .filter((repository): repository is GitHubRepository =>
+      Boolean(repository),
+    );
+  const canSaveFeaturedProjects =
+    draftFeaturedProjectIds.length === featuredProjectsCount &&
+    new Set(draftFeaturedProjectIds).size === featuredProjectsCount &&
+    draftFeaturedProjectIds.every((id) =>
+      repositories.some((repository) => repository.id === id),
+    );
 
   const deployedCount = repositories.filter(
     (repository) => repository.homepage,
@@ -474,7 +330,7 @@ function App() {
               <a href="#projetos">Projetos</a>
               <a href="#sobre">Sobre</a>
               <a className="nav-contact" href="#contato">
-                Contato <span aria-hidden="true">↗</span>
+                Contato
               </a>
             </nav>
             <button
@@ -518,14 +374,6 @@ function App() {
               <a className="button button-primary" href="#projetos">
                 Explorar projetos <span aria-hidden="true">↓</span>
               </a>
-              <a
-                className="button button-quiet"
-                href={githubProfileUrl}
-                target="_blank"
-                rel="noreferrer"
-              >
-                GitHub <span aria-hidden="true">↗</span>
-              </a>
             </div>
           </div>
 
@@ -539,15 +387,9 @@ function App() {
               height="420"
               fetchPriority="high"
             />
-            <a
-              className="logo-label"
-              href={githubProfileUrl}
-              target="_blank"
-              rel="noreferrer"
-            >
+            <div className="logo-label">
               <span>@{githubUsername}</span>
-              <span aria-hidden="true">↗</span>
-            </a>
+            </div>
           </div>
         </section>
 
@@ -565,9 +407,7 @@ function App() {
             <span className="metric-label">com site publicado</span>
           </div>
           <div className="metric metric-note">
-            <span className="metric-value">
-              GitHub <span aria-hidden="true">↗</span>
-            </span>
+            <span className="metric-value">GitHub</span>
             <span className="metric-label">projetos atualizados do perfil</span>
           </div>
         </section>
@@ -583,14 +423,6 @@ function App() {
                   Projetos<span className="accent-period">.</span>
                 </h2>
               </div>
-              <a
-                className="text-link"
-                href={githubProfileUrl}
-                target="_blank"
-                rel="noreferrer"
-              >
-                Ver perfil completo <span aria-hidden="true">↗</span>
-              </a>
             </div>
 
             {!isLoading && !error && featuredRepositories.length > 0 && (
@@ -631,7 +463,13 @@ function App() {
                       className="featured-action-button"
                       type="button"
                       onClick={() => {
-                        setDraftFeaturedProjectIds(displayedFeaturedProjectIds);
+                        const initialDraft = [...displayedFeaturedProjectIds];
+                        while (initialDraft.length < featuredProjectsCount) {
+                          initialDraft.push(0);
+                        }
+                        setDraftFeaturedProjectIds(
+                          initialDraft.slice(0, featuredProjectsCount),
+                        );
                         setIsEditingFeaturedProjects(true);
                       }}
                     >
@@ -644,11 +482,26 @@ function App() {
                 <div className="featured-grid">
                   {featuredRepositories.map((repository, index) => (
                     <article className="featured-card" key={repository.id}>
-                      <ProjectThumbnail
-                        repository={repository}
-                        imageUrl={projectImages[repository.id]}
-                        onImageError={handleProjectImageError}
-                      />
+                      <div
+                        className="project-thumbnail"
+                        role="img"
+                        aria-label={`Prévia do projeto ${repository.name}`}
+                      >
+                        {projectImages[repository.id] ? (
+                          <img
+                            src={projectImages[repository.id]}
+                            alt=""
+                            loading="lazy"
+                            onError={() =>
+                              handleProjectImageError(repository.id)
+                            }
+                          />
+                        ) : (
+                          <span aria-hidden="true">
+                            {repository.name.slice(0, 1).toUpperCase()}
+                          </span>
+                        )}
+                      </div>
                       <div className="featured-card-content">
                         <p className="featured-card-category">
                           {
@@ -674,6 +527,7 @@ function App() {
                               className="technology-tag"
                               data-color={getTechnologyColor(technology)}
                               key={technology}
+                              style={getTechTagStyle(technology)}
                             >
                               {technology}
                             </span>
@@ -685,7 +539,10 @@ function App() {
                             <select
                               value={draftFeaturedProjectIds[index] ?? ""}
                               onChange={(event) => {
-                                const selectedId = Number(event.target.value);
+                                const selectedId =
+                                  event.target.value === ""
+                                    ? 0
+                                    : Number(event.target.value);
                                 setDraftFeaturedProjectIds((currentIds) =>
                                   currentIds.map((id, currentIndex) =>
                                     currentIndex === index ? selectedId : id,
@@ -693,6 +550,9 @@ function App() {
                                 );
                               }}
                             >
+                              <option value="" disabled>
+                                Selecione um projeto
+                              </option>
                               {repositories.map((option) => (
                                 <option
                                   key={option.id}
@@ -719,12 +579,8 @@ function App() {
                               Site <span aria-hidden="true">↗</span>
                             </a>
                           )}
-                          <a
-                            href={repository.html_url}
-                            target="_blank"
-                            rel="noreferrer"
-                          >
-                            Código <span aria-hidden="true">↗</span>
+                          <a href="#contato" target="_blank" rel="noreferrer">
+                            Contato <span aria-hidden="true">↗</span>
                           </a>
                         </div>
                       </div>
@@ -735,11 +591,7 @@ function App() {
             )}
 
             <div className="project-toolbar">
-              <div
-                className="filter-group"
-                role="group"
-                aria-label="Filtrar projetos"
-              >
+              <fieldset className="filter-group" aria-label="Filtrar projetos">
                 <button
                   className={
                     filter === "all" ? "filter-button active" : "filter-button"
@@ -768,7 +620,7 @@ function App() {
                 >
                   Com site
                 </button>
-              </div>
+              </fieldset>
               <label className="category-select">
                 <span className="visually-hidden">Categoria dos projetos</span>
                 <select
@@ -824,11 +676,24 @@ function App() {
                 !error &&
                 paginatedRepositories.map((repository) => (
                   <article className="project-row" key={repository.id}>
-                    <ProjectThumbnail
-                      repository={repository}
-                      imageUrl={projectImages[repository.id]}
-                      onImageError={handleProjectImageError}
-                    />
+                    <div
+                      className="project-thumbnail"
+                      role="img"
+                      aria-label={`Prévia do projeto ${repository.name}`}
+                    >
+                      {projectImages[repository.id] ? (
+                        <img
+                          src={projectImages[repository.id]}
+                          alt=""
+                          loading="lazy"
+                          onError={() => handleProjectImageError(repository.id)}
+                        />
+                      ) : (
+                        <span aria-hidden="true">
+                          {repository.name.slice(0, 1).toUpperCase()}
+                        </span>
+                      )}
+                    </div>
                     <div className="project-summary">
                       <h3>{repository.name.replace(/[-_]/g, " ")}</h3>
                       <p>{getProjectDescription(repository)}</p>
@@ -854,6 +719,7 @@ function App() {
                             className="technology-tag"
                             data-color={getTechnologyColor(technology)}
                             key={technology}
+                            style={getTechTagStyle(technology)}
                           >
                             {technology}
                           </span>
@@ -875,12 +741,8 @@ function App() {
                           Site <span aria-hidden="true">↗</span>
                         </a>
                       )}
-                      <a
-                        href={repository.html_url}
-                        target="_blank"
-                        rel="noreferrer"
-                      >
-                        Código <span aria-hidden="true">↗</span>
+                      <a href="#contato" target="_blank" rel="noreferrer">
+                        Contato <span aria-hidden="true">↗</span>
                       </a>
                     </div>
                   </article>
@@ -948,14 +810,10 @@ function App() {
                 transformar ideias em produtos digitais que sejam claros para
                 quem usa e sólidos por dentro.
               </p>
-              <a
-                className="about-link"
-                href={githubProfileUrl}
-                target="_blank"
-                rel="noreferrer"
-              >
-                Conheça meu trabalho no GitHub <span aria-hidden="true">↗</span>
-              </a>
+              <p className="about-contact-note">
+                Interessado nos códigos dos projetos? Entre em contato para mais
+                informações.
+              </p>
             </div>
           </div>
         </section>
@@ -963,19 +821,65 @@ function App() {
         <section className="container contact-section" id="contato">
           <p className="eyebrow">Próximo passo</p>
           <div className="contact-content">
-            <h2>
-              Vamos criar algo
-              <br />
-              que vale a pena.
-            </h2>
-            <a
-              className="button button-primary"
-              href={githubProfileUrl}
-              target="_blank"
-              rel="noreferrer"
-            >
-              Fale comigo pelo GitHub <span aria-hidden="true">↗</span>
-            </a>
+            <div>
+              <h2 className="mb-2">
+                Vamos criar algo
+                <br />
+                que vale a pena
+                <span className="accent-period">.</span>
+              </h2>
+              <p className="contact-description">
+                Se você tem interesse em acessar os códigos dos meus projetos ou
+                quer discutir uma parceria, preencha o formulário abaixo para
+                entrar em contato.
+              </p>
+            </div>
+            <form className="contact-form" onSubmit={handleContactSubmit}>
+              <div className="form-row">
+                <div className="form-group">
+                  <label htmlFor="contact-name" className="visually-hidden">
+                    Nome
+                  </label>
+                  <input
+                    type="text"
+                    id="contact-name"
+                    value={contactName}
+                    onChange={(e) => setContactName(e.target.value)}
+                    placeholder="Nome"
+                    required
+                  />
+                </div>
+                <div className="form-group">
+                  <label htmlFor="contact-email" className="visually-hidden">
+                    Email
+                  </label>
+                  <input
+                    type="email"
+                    id="contact-email"
+                    value={contactEmail}
+                    onChange={(e) => setContactEmail(e.target.value)}
+                    placeholder="Email"
+                    required
+                  />
+                </div>
+              </div>
+              <div className="form-group">
+                <label htmlFor="contact-message" className="visually-hidden">
+                  Mensagem
+                </label>
+                <textarea
+                  id="contact-message"
+                  value={contactMessage}
+                  onChange={(e) => setContactMessage(e.target.value)}
+                  placeholder="Mensagem"
+                  rows={4}
+                  required
+                />
+              </div>
+              <button type="submit" className="button button-primary">
+                Enviar
+              </button>
+            </form>
           </div>
         </section>
       </main>
