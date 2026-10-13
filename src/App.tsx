@@ -556,8 +556,8 @@ function App() {
                               Site <span aria-hidden="true">↗</span>
                             </a>
                           )}
-                          <a href="#contato" target="_blank" rel="noreferrer">
-                            Contato <span aria-hidden="true">↗</span>
+                          <a className="nav-contact" href="#contato">
+                            Contato
                           </a>
                         </div>
                       </div>
@@ -718,8 +718,8 @@ function App() {
                           Site <span aria-hidden="true">↗</span>
                         </a>
                       )}
-                      <a href="#contato" target="_blank" rel="noreferrer">
-                        Contato <span aria-hidden="true">↗</span>
+                      <a className="nav-contact" href="#contato">
+                        Contato
                       </a>
                     </div>
                   </article>
