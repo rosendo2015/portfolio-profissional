@@ -1,3 +1,4 @@
+import emailjs from "@emailjs/browser";
 import {
   Check,
   ChevronLeft,
@@ -8,6 +9,11 @@ import {
   X,
 } from "lucide-react";
 import { useEffect, useState } from "react";
+import {
+  emailjsPublicKey,
+  emailjsServiceId,
+  emailjsTemplateId,
+} from "./constants";
 import "./App.css";
 import {
   featuredProjectsCount,
@@ -76,10 +82,28 @@ function App() {
 
   function handleContactSubmit(event: React.FormEvent) {
     event.preventDefault();
-    const mailtoUrl = `mailto:rosendc30@gmail.com?subject=Contato%20Portf%C3%B3lio%20-%20${encodeURIComponent(contactName)}&body=${encodeURIComponent(
-      `Nome: ${contactName}\nEmail: ${contactEmail}\n\nMensagem:\n${contactMessage}`,
-    )}`;
-    window.location.href = mailtoUrl;
+
+    emailjs
+      .send(
+        emailjsServiceId,
+        emailjsTemplateId,
+        {
+          from_name: contactName,
+          from_email: contactEmail,
+          message: contactMessage,
+          reply_to: contactEmail, // <-- Adicione esta linha
+        },
+        emailjsPublicKey,
+      )
+      .then(() => {
+        alert("Mensagem enviada com sucesso!");
+        setContactName("");
+        setContactEmail("");
+        setContactMessage("");
+      })
+      .catch(() => {
+        alert("Erro ao enviar. Tente novamente mais tarde.");
+      });
   }
 
   function handleProjectImageError(repositoryId: number) {
@@ -149,59 +173,12 @@ function App() {
         setRepositories(allRepositories);
       } catch (requestError) {
         if (!controller.signal.aborted) {
-          if (
+          setError(
             requestError instanceof Error &&
-            requestError.message.includes("403")
-          ) {
-            setError(requestError.message);
-          } else {
-            setRepositories([
-              {
-                id: 1,
-                name: "portfolio-profissional",
-                description: "Portfólio profissional de Francisco Rosendo",
-                homepage: "https://meu-portfolio.com",
-                default_branch: "main",
-                language: "TypeScript",
-                topics: ["portfolio", "react", "vite"],
-                stargazers_count: 5,
-                fork: false,
-              },
-              {
-                id: 2,
-                name: "api-nodejs",
-                description: "API REST com Node.js",
-                homepage: "https://api.example.com",
-                default_branch: "main",
-                language: "JavaScript",
-                topics: ["api", "nodejs", "express"],
-                stargazers_count: 3,
-                fork: false,
-              },
-              {
-                id: 3,
-                name: "ecommerce-frontend",
-                description: "Frontend de ecommerce",
-                homepage: "https://loja.example.com",
-                default_branch: "main",
-                language: "TypeScript",
-                topics: ["react", "ecommerce", "vite"],
-                stargazers_count: 8,
-                fork: false,
-              },
-              {
-                id: 4,
-                name: "app-mobile",
-                description: "Aplicativo mobile",
-                homepage: null,
-                default_branch: "main",
-                language: "Dart",
-                topics: ["flutter", "mobile"],
-                stargazers_count: 2,
-                fork: false,
-              },
-            ]);
-          }
+              requestError.message.includes("403")
+              ? requestError.message
+              : "Não foi possível carregar os projetos do GitHub.",
+          );
         }
       } finally {
         if (!controller.signal.aborted) {
